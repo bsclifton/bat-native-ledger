@@ -332,6 +332,7 @@ void LedgerImpl::SetPublisherAllowVideos(bool allow) {
 
 void LedgerImpl::SetContributionAmount(double amount) {
   bat_client_->setContributionAmount(amount);
+  OnContributionAmountSet();
 }
 
 void LedgerImpl::SetAutoContribute(bool enabled) {
@@ -588,6 +589,18 @@ void LedgerImpl::OnPublishersListSaved(ledger::Result result) {
   bool retryAfterError = (ledger::Result::OK == result) ? false : true;
   bat_publishers_->OnPublishersListSaved(result);
   RefreshPublishersList(retryAfterError);
+}
+
+void LedgerImpl::OnContributionAmountSet() {
+  ledger_client_->OnContributionAmountSet();
+}
+
+void LedgerImpl::SetContributionAmountReport(ledger::PUBLISHER_MONTH month, int year) {
+  ledger::BalanceReportInfo report_info;
+  bool successGet = GetBalanceReport(month, year, &report_info);
+  if (successGet) {
+    SetBalanceReport(month, year, report_info);
+  }
 }
 
 }  // namespace bat_ledger

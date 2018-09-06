@@ -413,11 +413,30 @@ void BatPublishers::setBalanceReport(ledger::PUBLISHER_MONTH month,
   report_balance.opening_balance_ = report_info.opening_balance_;
   report_balance.closing_balance_ = report_info.closing_balance_;
   report_balance.grants_ = report_info.grants_;
+  report_balance.deposits_ = report_info.deposits_;
   report_balance.earning_from_ads_ = report_info.earning_from_ads_;
-  report_balance.auto_contribute_ = report_info.auto_contribute_;
+
+  if (ledger_->GetAutoContribute()) {
+    LOG(ERROR) << "IN";
+    double amount = ledger_->GetContributionAmount();
+    LOG(ERROR) << amount;
+    uint64_t probiAmount = braveledger_bat_helper::doubleToProbi(amount);
+    LOG(ERROR) << probiAmount;
+    report_balance.auto_contribute_ = probiAmount;
+  } else {
+    LOG(ERROR) << "OUT";
+    report_balance.auto_contribute_ = 0;
+  }
+
+  LOG(ERROR) << "REPORT-" << report_balance.auto_contribute_;
+
   report_balance.recurring_donation_ = report_info.recurring_donation_;
   report_balance.one_time_donation_ = report_info.one_time_donation_;
 
+  uint64_t total = report_balance.grants_ + report_balance.earning_from_ads_ + report_balance.deposits_ -
+      report_balance.auto_contribute_ - report_balance.recurring_donation_ - report_balance.one_time_donation_;
+
+  report_balance.total_ = total;
   state_->monthly_balances_[GetBalanceReportName(month, year)] = report_balance;
   saveState();
 }

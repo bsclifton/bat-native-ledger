@@ -215,13 +215,15 @@ namespace braveledger_bat_helper {
 
     bool loadFromJson(const std::string &json);
 
-    double opening_balance_ = .0;
-    double closing_balance_ = .0;
-    double grants_ = .0;
-    double earning_from_ads_ = .0;
-    double auto_contribute_ = .0;
-    double recurring_donation_ = .0;
-    double one_time_donation_ = .0;
+    uint64_t opening_balance_ = 0;
+    uint64_t closing_balance_ = 0;
+    uint64_t deposits_ = 0;
+    uint64_t grants_ = 0;
+    uint64_t earning_from_ads_ = 0;
+    uint64_t auto_contribute_ = 0;
+    uint64_t recurring_donation_ = 0;
+    uint64_t one_time_donation_ = 0;
+    uint64_t total_ = 0;
   };
 
   struct PUBLISHER_STATE_ST {
@@ -416,6 +418,7 @@ namespace braveledger_bat_helper {
   std::string buildURL(const std::string& path, const std::string& prefix = "", const SERVER_TYPES& server = SERVER_TYPES::LEDGER);
 
   std::vector<std::string> split(const std::string& s, char delim);
+  uint64_t doubleToProbi (const double amount);
 }  // namespace braveledger_bat_helper
 
 #endif  // BRAVELEDGER_BAT_HELPER_H_

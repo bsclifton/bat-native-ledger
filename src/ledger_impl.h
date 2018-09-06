@@ -131,6 +131,8 @@ class LedgerImpl : public ledger::Ledger,
   void RunTask(LedgerTaskRunnerImpl::Task task);
   std::string URIEncode(const std::string& value) override;
   void SaveMediaVisit(const std::string& publisher_id, const ledger::VisitData& visit_data, const uint64_t& duration) override;
+  void SetContributionAmountReport(ledger::PUBLISHER_MONTH month, int year) override;
+  void OnContributionAmountSet() override;
 
  private:
   void MakePayment(const ledger::PaymentData& payment_data) override;

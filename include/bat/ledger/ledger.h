@@ -159,6 +159,8 @@ class LEDGER_EXPORT Ledger {
 
   virtual void RecoverWallet(const std::string& passPhrase) const = 0;
   virtual void SaveMediaVisit(const std::string& publisher_id, const ledger::VisitData& visit_data, const uint64_t& duration) = 0;
+  virtual void SetContributionAmountReport(ledger::PUBLISHER_MONTH month, int year) = 0;
+  virtual void OnContributionAmountSet() = 0;
 };
 
 }  // namespace ledger

@@ -166,6 +166,8 @@ void BatClient::registerPersonaCallback(bool result,
   state_->bootStamp_ = braveledger_bat_helper::currentTime() * 1000;
   state_->reconcileStamp_ = state_->bootStamp_ + state_->days_ * 24 * 60 * 60 * 1000;
 
+  ledger_->OnContributionAmountSet();
+
   ledger_->OnWalletInitialized(ledger::Result::OK);
   saveState();
 }
