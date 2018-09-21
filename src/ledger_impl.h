@@ -45,7 +45,6 @@ class LedgerImpl : public ledger::Ledger,
 
   std::string GenerateGUID() const;
   void Initialize() override;
-  void Reconcile() override;
   bool CreateWallet() override;
 
   void SetPublisherInfo(std::unique_ptr<ledger::PublisherInfo> publisher_info,
@@ -138,6 +137,11 @@ class LedgerImpl : public ledger::Ledger,
   void SetPublisherExclude(const std::string& publisher_id, const ledger::PUBLISHER_EXCLUDE& exclude) override;
   void RestorePublishers() override;
   bool IsWalletCreated() const override;
+  void Reconcile() override;
+  void VotePublishers(const std::vector<braveledger_bat_helper::WINNERS_ST>& winners,
+    const std::string& viewing_id);
+  void PrepareVoteBatchTimer();
+  void VoteBatchTimer();
 
  private:
   void MakePayment(const ledger::PaymentData& payment_data) override;
@@ -184,7 +188,6 @@ class LedgerImpl : public ledger::Ledger,
   void OnPublisherListLoaded(ledger::Result result,
                              const std::string& data) override;
 
-
   ledger::LedgerClient* ledger_client_;
   std::unique_ptr<braveledger_bat_client::BatClient> bat_client_;
   std::unique_ptr<braveledger_bat_publishers::BatPublishers> bat_publishers_;
@@ -199,6 +202,9 @@ class LedgerImpl : public ledger::Ledger,
   uint64_t last_tab_active_time_;
   uint32_t last_shown_tab_id_;
   uint32_t last_pub_load_timer_id_;
+  uint32_t last_reconcile_timer_id_;
+  uint32_t last_prepare_vote_batch_timer_id_;
+  uint32_t last_vote_batch_timer_id_;
  };
 }  // namespace bat_ledger
 

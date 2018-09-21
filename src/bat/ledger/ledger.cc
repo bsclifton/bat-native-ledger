@@ -85,12 +85,14 @@ PaymentData::~PaymentData() {}
 PublisherInfoFilter::PublisherInfoFilter() :
     category(PUBLISHER_CATEGORY::ALL_CATEGORIES),
     month(PUBLISHER_MONTH::ANY),
-    year(-1) {}
+    year(-1),
+    reconcile_stamp(0) {}
 PublisherInfoFilter::PublisherInfoFilter(const PublisherInfoFilter& filter) :
     id(filter.id),
     category(filter.category),
     month(filter.month),
-    year(filter.year) {}
+    year(filter.year),
+    reconcile_stamp(filter.reconcile_stamp) {}
 PublisherInfoFilter::~PublisherInfoFilter() {}
 
 PublisherInfo::PublisherInfo() :
@@ -101,6 +103,9 @@ PublisherInfo::PublisherInfo() :
     weight(.0),
     excluded(PUBLISHER_EXCLUDE::DEFAULT),
     category(PUBLISHER_CATEGORY::AUTO_CONTRIBUTE),
+    month(PUBLISHER_MONTH::ANY),
+    year(-1),
+    reconcile_stamp(0),
     verified(false),
     name(""),
     url(""),
@@ -120,6 +125,7 @@ PublisherInfo::PublisherInfo(const std::string& publisher_id,
     category(PUBLISHER_CATEGORY::AUTO_CONTRIBUTE),
     month(_month),
     year(_year),
+    reconcile_stamp(0),
     verified(false),
     name(""),
     url(""),
@@ -137,6 +143,7 @@ PublisherInfo::PublisherInfo(const PublisherInfo& info) :
     category(info.category),
     month(info.month),
     year(info.year),
+    reconcile_stamp(info.reconcile_stamp),
     verified(info.verified),
     name(info.name),
     url(info.url),
@@ -145,6 +152,10 @@ PublisherInfo::PublisherInfo(const PublisherInfo& info) :
     contributions(info.contributions) {}
 
 PublisherInfo::~PublisherInfo() {}
+
+bool PublisherInfo::operator<(const PublisherInfo& rhs) const {
+    return score > rhs.score;
+  }
 
 bool PublisherInfo::is_valid() const {
   return !id.empty() && year > 0 && month != PUBLISHER_MONTH::ANY;

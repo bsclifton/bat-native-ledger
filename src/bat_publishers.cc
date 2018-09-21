@@ -114,12 +114,14 @@ ledger::PublisherInfoFilter BatPublishers::CreatePublisherFilter(
     const std::string& publisher_id,
     ledger::PUBLISHER_CATEGORY category,
     ledger::PUBLISHER_MONTH month,
-    int year) {
+    int year,
+    const uint64_t& currentReconcileStamp) {
   ledger::PublisherInfoFilter filter;
   filter.id = publisher_id;
   filter.category = category;
   filter.month = month;
   filter.year = year;
+  filter.reconcile_stamp = currentReconcileStamp;
 
   return filter;
 }
@@ -187,6 +189,7 @@ void BatPublishers::saveVisitInternal(
   publisher_info->category = ledger::PUBLISHER_CATEGORY::AUTO_CONTRIBUTE;
   publisher_info->score += concaveScore(duration);
   publisher_info->verified = isVerified(publisher_info->id);
+  publisher_info->reconcile_stamp = ledger_->GetReconcileStamp();
 
   ledger_->SetPublisherInfo(std::move(publisher_info),
       std::bind(&onVisitSavedDummy, _1, _2));
@@ -301,7 +304,8 @@ bool BatPublishers::getPublisherAllowVideos() const {
   return state_->allow_videos_;
 }
 
-void BatPublishers::synopsisNormalizerInternal(const ledger::PublisherInfoList& oldList, uint32_t /* next_record */) {
+void BatPublishers::synopsisNormalizerInternal(ledger::PublisherInfoList* newList, bool saveData,
+    const ledger::PublisherInfoList& oldList, uint32_t /* next_record */) {
   // TODO SZ: We can pass non const value here to avoid copying
   ledger::PublisherInfoList list = oldList;
   //LOG(ERROR) << "!!!list.size() == " << list.size();
@@ -360,10 +364,15 @@ void BatPublishers::synopsisNormalizerInternal(const ledger::PublisherInfoList& 
     //LOG(ERROR) << "!!!new percent == " << list[i].percent;
     //LOG(ERROR) << "!!!new weight == " << list[i].weight;
     currentValue++;
-    std::unique_ptr<ledger::PublisherInfo> publisher_info;
-    publisher_info.reset(new ledger::PublisherInfo(list[i]));
-    ledger_->SetPublisherInfo(std::move(publisher_info),
-      std::bind(&onVisitSavedDummy, _1, _2));
+    if (saveData) {
+      std::unique_ptr<ledger::PublisherInfo> publisher_info;
+      publisher_info.reset(new ledger::PublisherInfo(list[i]));
+      ledger_->SetPublisherInfo(std::move(publisher_info),
+        std::bind(&onVisitSavedDummy, _1, _2));
+    } 
+    if (newList) {
+      newList->push_back(list[i]);
+    }
   }
 }
 
@@ -375,24 +384,51 @@ void BatPublishers::synopsisNormalizer(const ledger::PublisherInfo& info) {
   // TODO SZ: We pull the whole list currently, I don't think it consumes lots of RAM, but could.
   // We need to limit it and iterate.
   ledger_->GetPublisherInfoList(0, 0, filter, std::bind(&BatPublishers::synopsisNormalizerInternal, this,
-          _1, _2));
+          nullptr, true, _1, _2));
 }
 
-std::vector<braveledger_bat_helper::WINNERS_ST> BatPublishers::winners(const unsigned int& ballots) {
-  std::vector<braveledger_bat_helper::WINNERS_ST> res;
-  std::vector<braveledger_bat_helper::PUBLISHER_ST> top = topN();
+void BatPublishers::winners(const unsigned int& ballots,
+    const uint64_t& currentReconcileStamp, const std::string& viewing_id) {
+  topN(ballots, currentReconcileStamp, viewing_id);
+}
+
+void BatPublishers::topN(const unsigned int& ballots,
+    const uint64_t& currentReconcileStamp, const std::string& viewing_id) {
+  auto filter = CreatePublisherFilter("",
+      ledger::PUBLISHER_CATEGORY::AUTO_CONTRIBUTE,
+      ledger::PUBLISHER_MONTH::ANY,
+      -1,
+      currentReconcileStamp);
+  // TODO SZ: We pull the whole list currently, I don't think it consumes lots of RAM, but could.
+  // We need to limit it and iterate.
+  ledger_->GetPublisherInfoList(0, 0, filter, std::bind(&BatPublishers::topNInternal, this,
+          ballots, viewing_id, _1, _2));
+}
+
+void BatPublishers::topNInternal(const unsigned int& ballots, const std::string& viewing_id,
+    const ledger::PublisherInfoList& list, uint32_t  next_record) {
+  ledger::PublisherInfoList newList;
+  synopsisNormalizerInternal(&newList, false, list, next_record);
+  std::sort(newList.begin(), newList.end());
+
   unsigned int totalVotes = 0;
   std::vector<unsigned int> votes;
+  std::vector<braveledger_bat_helper::WINNERS_ST> res;
   // TODO there is underscore.shuffle
-  for (size_t i = 0; i < top.size(); i++) {
-    LOG(ERROR) << "!!!name == " << top[i].id_ << ", score == " << top[i].score_;
-    if (top[i].percent_ <= 0) {
+  for (size_t i = 0; i < newList.size(); i++) {
+    //LOG(ERROR) << "!!!name == " << newList[i].id << ", score == " << newList[i].score;
+    if (newList[i].percent <= 0) {
       continue;
     }
     braveledger_bat_helper::WINNERS_ST winner;
-    winner.votes_ = (unsigned int)std::lround((double)top[i].percent_ * (double)ballots / 100.0);
+    winner.votes_ = (unsigned int)std::lround((double)newList[i].percent * (double)ballots / 100.0);
     totalVotes += winner.votes_;
-    winner.publisher_data_ = top[i];
+    winner.publisher_data_.id_ = newList[i].id;
+    winner.publisher_data_.duration_ = newList[i].duration;
+    winner.publisher_data_.score_ = newList[i].score;
+    winner.publisher_data_.visits_ = newList[i].visits;
+    winner.publisher_data_.percent_ = newList[i].percent;
+    winner.publisher_data_.weight_ = newList[i].weight;
     res.push_back(winner);
   }
   if (res.size()) {
@@ -403,19 +439,7 @@ std::vector<braveledger_bat_helper::WINNERS_ST> BatPublishers::winners(const uns
     }
   }
 
-  return res;
-}
-
-std::vector<braveledger_bat_helper::PUBLISHER_ST> BatPublishers::topN() {
-  std::vector<braveledger_bat_helper::PUBLISHER_ST> res;
-
-  // TODO: we need to implement it for reconcile based on the current reconcile month
-  // for (std::map<std::string, braveledger_bat_helper::PUBLISHER_ST>::const_iterator iter = publishers_.begin(); iter != publishers_.end(); iter++)
-  //   res.push_back(iter->second);
-
-  // std::sort(res.begin(), res.end());
-
-  return res;
+  ledger_->VotePublishers(res, viewing_id);
 }
 
 bool BatPublishers::isVerified(const std::string& publisher_id) {

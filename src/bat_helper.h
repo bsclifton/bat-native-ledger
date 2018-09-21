@@ -422,6 +422,7 @@ namespace braveledger_bat_helper {
 
   bool ignore_for_testing();
   void set_ignore_for_testing(bool ignore);
+  uint64_t getRandomValue(uint8_t min, uint8_t max);
 }  // namespace braveledger_bat_helper
 
 #endif  // BRAVELEDGER_BAT_HELPER_H_
